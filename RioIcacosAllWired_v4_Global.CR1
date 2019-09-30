@@ -125,7 +125,9 @@ StationName RioIcacos
 ' May 31 2016 - Lisle Snyder merged code provided by Eric Moore to switch YSI EXO2 with Eureka, and add Vaisala to SE1 for Rio Icacos PR site
 ' April 14 2017 - Eric Moore merged this code to accomodate wired sensor set up: Conductivity, pH, CO2, Turbidity, and fDOM
 ' March 2018 - Lisle Snyder added lines to include an Aquatic CO2 meter with analog output, Removed Eureka code lines to save space
-' April 16 2018 - Carla López Lloreda fixed mistake between Ct and Cond (were switched around)
+' April 16 2018 - Carla Lï¿½pez Lloreda fixed mistake between Ct and Cond (were switched around)
+' October 2019 - Kyle Zollo:
+'               -commented out pH sensor lines
 
 
 'SequentialMode 'Configures data logger to perform tasks sequentially
@@ -179,17 +181,17 @@ Public NO3Vals2(20), Abs254vals(20),Abs350vals(20),Brvals(20),Lvals(20)
 Public SumNO32,SumAbs254,SumAbs350,SumBr,SumL
 Public Nitrate_mgL,Nitrate_um,Absorbance_254,Absorbance_350,Bromide,LightAverage
 
-Public pHCount
-Public pH
+'Public pHCount
+'Public pH
 Public Cond,Ct,Temp2
 Public Turb
 Public TurbNTU
 Public fDOM
-Dim RawString2 As String * 20, pHDigit(2)
+'Dim RawString2 As String * 20, pHDigit(2)
 Dim Rs
 Public Gain
 
-Units pHCount=pH
+'Units pHCount=pH
 Units Cond=mS/cm
 Units Ct=mS/cm
 Units Temp2=Deg C
@@ -207,8 +209,8 @@ Public WiperFlagOn As Boolean
 Public ModemFlagOn As Boolean
 Public BattVolt ' measure the voltage being received
 
-Const pHMult=0.01886792
-Const pHOffs=-2.358491
+'Const pHMult=0.01886792
+'Const pHOffs=-2.358491
 
 'Data Tables
 DataTable (SUNARaw,1,-1) '-1 for auto-allocate memory.
@@ -227,8 +229,8 @@ DataTable (WQual,1,-1)
   Sample (1,Absorbance_350,IEEE4)
   Sample (1,Bromide,IEEE4)
   Sample (1,LightAverage,IEEE4)
-  Sample (1,pHCount,IEEE4)
-  Sample (1,pH,IEEE4)
+  'Sample (1,pHCount,IEEE4)
+  'Sample (1,pH,IEEE4)
   Sample (1,Cond,FP2)
   Sample (1,Ct,FP2)
   Sample (1,Temp2,FP2)
@@ -349,16 +351,16 @@ BeginProg
 	  Aq_CO2Measurements
 
       'Vaisala CO2 Sensor Generic Single-Ended Voltage measurements 'SEVolt' (wired to SE 1)
-      VoltSe(SEVolt,1,mV5000,4,True,0,_60Hz,1,0)
+      'VoltSe(SEVolt,1,mV5000,4,True,0,_60Hz,1,0)
 
       'CS526 ISFET pH Probe measurement 'pH'
-      SerialOpen(Com3,2400,16,0,41)
-      SerialOut(Com3,"1M1!"&CHR(13),"",0,0)
-      SerialIn(RawString2,Com3,50,0,20)
+      'SerialOpen(Com3,2400,16,0,41)
+      'SerialOut(Com3,"1M1!"&CHR(13),"",0,0)
+      'SerialIn(RawString2,Com3,50,0,20)
       'Parse out 'pHAdd' and 'pHCount' from 'CS526String'
-      SplitStr(pHDigit(),RawString2,"String",2,0)
-      pHCount = pHDigit(2)
-      pH=pHCount*pHMult+pHOffs
+      'SplitStr(pHDigit(),RawString2,"String",2,0)
+      'pHCount = pHDigit(2)
+      'pH=pHCount*pHMult+pHOffs
 
       'CS547A Conductivity and Temperature Probe measurements 'SpC', 'Ct', and 'Temp'
       'Make preliminary voltage measurement
