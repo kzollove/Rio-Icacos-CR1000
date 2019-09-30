@@ -147,8 +147,8 @@ Const Ndata = NDays*(60/meas_freq)*24*suna_scans ' for long frames
 Const SData=((60/meas_freq)*24*NDays)*10' multiply the number by 10 .
 
 'Vaisala CO2 Sensor
-Public SEVolt
-Units SEVolt=mV
+'Public SEVolt
+'Units SEVolt=mV
 
 'SUNA
 Public RawString As String *2000, NBytesReturned As String * 16
