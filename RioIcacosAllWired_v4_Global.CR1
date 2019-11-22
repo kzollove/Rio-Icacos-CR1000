@@ -126,8 +126,9 @@ StationName RioIcacos
 ' April 14 2017 - Eric Moore merged this code to accomodate wired sensor set up: Conductivity, pH, CO2, Turbidity, and fDOM
 ' March 2018 - Lisle Snyder added lines to include an Aquatic CO2 meter with analog output, Removed Eureka code lines to save space
 ' April 16 2018 - Carla L�pez Lloreda fixed mistake between Ct and Cond (were switched around)
-' October 2019 - Kyle Zollo:
+' December 2019 - Kyle Zollo:
 '               -commented out pH sensor lines
+'		-fixed mistake variable used in Ct calculation 
 
 
 'SequentialMode 'Configures data logger to perform tasks sequentially
@@ -391,7 +392,7 @@ BeginProg
       'Make temperature measurement (Deg C)
       Therm107(Temp2,1,5,2,0,250,1,0)
       'Correct EC for temperature errors
-      Ct=(Cond*100)/((temp-25)*2+100)
+      Ct=(Cond*100)/((Temp2-25)*2+100)
       'Trap measurements below 0.005 mS/cm threshold
       If Ct<0.005 Then
         Ct=0.005
