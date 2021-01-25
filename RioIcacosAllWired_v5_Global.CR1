@@ -316,7 +316,25 @@ Sub nitrateMeasurements
 EndSub
 
 ''''''''''''''''''''''''''
+Sub YSIMeasurements
+			 Scan( 65, Sec, 1,1 )   ' scan for roughly 1 minute to allow the ysi to send the data.
+				  Move (YSI(),SDI12Vals,NAN,1)
+				 '    SW12(1) ' switch on power to YSI 
+               	   	Delay(0,5,Sec) 
+        	 LCount=1      	   	
+			For e = 1 To SDI12Vals 'Try up to 14 times for valid readings
+						SDI12Recorder (YSI(LCount),1,0,"C!",1.0,0)	' EXO2 connected to CR1000 port C1 (arg2)
+																	' and SDI12 address 0 (arg3)
+			If YSI(LCount)<>NAN Then ExitFor
+			Next e
+			LCount=LCount+1
+			
 
+		
+			  NextScan
+		 EndSub
+		 
+		 ''''''''''''''''''''''''''''''
 Sub Aq_CO2Measurements
 			  ' read 20 measurements of CO2 
           For J=1 To 20
