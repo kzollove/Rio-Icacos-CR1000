@@ -168,6 +168,28 @@ Alias SUNA_parse(8)=Bromide2
 Alias SUNA_parse(9)=LightAverage2
 Alias SUNA_parse(10)=DarkAverage2
 
+' YSI EXO
+	Const SDI12Vals = 13 'max number SDI12 values to be returned
+    Const SDI12Freq = 17 'minutes
+    Public SDI12Read As Boolean
+    Dim LCount
+		Public YSI(SDI12Vals) 'array to hold SDI12 values returned
+		' time variable
+		Dim e
+               
+       Alias YSI(1)=CablePwrV
+       Alias YSI(2)=TempC 
+       Alias YSI(3)=Conductivity 
+       Alias YSI(4)=SpConductivity
+	   Alias YSI(5)=pH
+	   Alias YSI(6)=pH_mv
+       Alias YSI(7)=DepthMeter 
+       Alias YSI(8)=ODOPerCent 
+       Alias YSI(9)=ODOMGL 
+       Alias YSI(10)=TurbidityFNU
+       Alias YSI(11)=TurbidityNTU 
+       Alias YSI(12)=FDOMRFU
+       Alias YSI(13)=FDOMQSU 
 
 Alias rTime(1) = Year          'assign the alias Year to rTime(1)
 Alias rTime(2) = Month         'assign the alias Month to rTime(2)
