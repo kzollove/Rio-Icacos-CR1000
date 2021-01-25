@@ -394,6 +394,10 @@ BeginProg
       Battery(batt_volt)
 	  Aq_CO2Measurements
 
+'make YSI measurements
+SDI12Read = TRUE
+					YSIMeasurements
+
       'Vaisala CO2 Sensor Generic Single-Ended Voltage measurements 'SEVolt' (wired to SE 1)
       'VoltSe(SEVolt,1,mV5000,4,True,0,_60Hz,1,0)
 
