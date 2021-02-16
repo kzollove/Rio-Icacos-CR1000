@@ -84,7 +84,7 @@
 ' G         12V-
 '
 ' Define the width of the values array
-Const valueArrayLen = 18  'width of Wqual table
+Const valueArrayLen = 28  'width of Wqual table
 ' Define width of the data table
 Const tableWidth =  valueArrayLen
 'CR1000 Port settings for GlobalModem:
@@ -132,7 +132,8 @@ StationName RioIcacos
 '		-fixed mistake variable used in Ct calculation
 '   -renamed as v5
 ' February 2021 - Kyle Zollo:
-' Incorporate lines for YSI EXO
+' 	-Incorporate lines for YSI EXO
+' 	-Change ValueArrayLen (line 87) to 28: match new tablewidth
 
 'SequentialMode 'Configures data logger to perform tasks sequentially
 'Program variables
