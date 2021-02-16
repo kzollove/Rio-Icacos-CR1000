@@ -131,7 +131,8 @@ StationName RioIcacos
 '   -Removed pH and SEVolt from table
 '		-fixed mistake variable used in Ct calculation
 '   -renamed as v5
-
+' February 2021 - Kyle Zollo:
+' Incorporate lines for YSI EXO
 
 'SequentialMode 'Configures data logger to perform tasks sequentially
 'Program variables
