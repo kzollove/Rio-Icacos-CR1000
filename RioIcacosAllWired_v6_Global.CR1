@@ -1,121 +1,3 @@
-'CR1000 Series Datalogger
-' Copyright 2014, 2017 Micro Specialties, Inc. Wasilla, Alaska
-' Richard M. Brown
-' Micro Specialties, Inc.
-' Wasilla, Alaska
-' www.Micro-Specilaties.com
-' 907-373-7424
-'
-'Terms of Use:
-'Micro Specialties, Inc. (MSI) provides software products for use only with MSI products such as Global Modem free of charge to MSI clients.
-'The recipient of said software products may not sell, loan, copy or otherwise distribute MSI software products in whole or in part, to other
-'individuals or entities without the expressed, written permission of Micro Specialties, Inc.
-'Acceptance or use of MSI software products implies consent to these terms of use.
-'This paragraph must be included in any client software based in whole or in part on any MSI software product.
-'
-' Program Specifics:
-' Send a Global Modem report at the top of the hour, or if C8 increments
-' The report is built from the table "hourly", which contains some battery voltage and panel temperature values.
-'
-' The Slow Scan operates the Global Modem dialog at lower priority than the data collection scan, so scans are never skipped.
-' An "outer loop" is present in the slow scan, which will call sendvalues repeatedly until message delievry is confirmed.  This loop can
-' run up to 10 times, or until sendvalues() sets the msgDelivered flag to 1.
-'
-' Important Global Modem Variables:
-' SendReport    - flag set at report interval to start the report process.  SendReport is set if:
-'                 - c8 > 0.    (touching c8 to 5V will cause c8 to increment, which set SendReport immediately
-'                 - iftime(0,60,min) (aoutmatic report at the top of each hour
-' sendLoop      - "outer loop" counter (allows the send function to loop up to 10 times to deliver a data message
-' tries         - "inner loop" counter (tries up to 5 times to deliver a data message before power-cycling the modem)
-' commState     - Text indicator: indicates status of the current report:
-'                 - "Attention":     Modem is awake and responsive
-'                 - "Net Ready":     Modem is accessing the network
-'                 - "Msg Delivered": The Report has been delivered across the network
-'                 - "Msg Failed":    Report delivery has failed. Report has not been delivered.
-' RptsAttempted - number of reports attempted
-' RptsFailed    - number of reports not delivered (failed)
-' values2send   - number of values to send via Global Modem
-' values        - pass this array of floats to the Modem
-'
-' Global Modem connects to the CSIO port:
-' CSIO Pin    GlobalModem    Function
-' 5           white          Activate (wake up)
-' 9           red            Serial Data CR1000 TX
-' 4           green          Serial Data CR1000 RX
-' 2           black          Common
-
-' Global Modem Power
-' Modem Wire    Logger Wire Point
-' 12V (Red)     12V               12V + 1.6A Peak
-' G   (Blk)       G
-'
-
-' Program Specifics:
-' Send a Global Modem report at the top of the hour, or if C8 increments
-' The report is built from the table "Wqual" (17 values, NOW 18 WITH AqCO2).
-'
-' The Slow Scan operates the Global Modem dialog at lower priority than the data collection scan, so scans are never skipped.
-' An "outer loop" is present in the slow scan, which will call sendvalues repeatedly until message delievry is confirmed.  This loop can
-' run up to 10 times, or until sendvalues() sets the msgDelivered flag to 1.
-'
-' Important Global Modem Variables:
-' SendReport    - flag set at report interval to start the report process.  SendReport is set if:
-'                 - c8 > 0.    (touching c8 to 5V will cause c8 to increment, which set SendReport immediately
-'                 - iftime(0,60,min) (aoutmatic report at the top of each hour
-' sendLoop      - "outer loop" counter (allows the send function to loop up to 10 times to deliver a data message
-' tries         - "inner loop" counter (tries up to 5 times to deliver a data message before power-cycling the modem)
-' commState     - Text indicator: indicates status of the current report:
-'                 - "Attention":     Modem is awake and responsive
-'                 - "Net Ready":     Modem is accessing the network
-'                 - "Msg Delivered": The Report has been delivered across the network
-'                 - "Msg Failed":    Report delivery has failed. Report has not been delivered.
-' RptAttempted   - number of reports attempted
-' RptFailures    - number of reports not delivered (failed)
-' values2send    - number of values to send via Global Modem
-' values         - pass this array of floats to the Modem
-'
-' Global Modem connects to CR1000 Wiring Panel Special Wiring for Riolcacos:
-' CR1000    GlobalModem    Function
-' C4        C4             Activate (wake up)
-' C5        C5             Serial Data CR1000 TX
-' C6        C6             Serial Data CR1000 RX
-' G         G              Common
-' 12V       12V+           12V + 1.6A Peak
-' G         12V-
-'
-' Define the width of the values array
-Const valueArrayLen = 28  'width of Wqual table
-' Define width of the data table
-Const tableWidth =  valueArrayLen
-'CR1000 Port settings for GlobalModem:
-'  Normally use com3 for communications with Global Modem when connecting to the wiring panel (C4,C5,C6)
-'  If using the CSIO port instead, set iPort to comME
-Const iPort = comME  ' use com1 for data interface to Global Modem
-Const iEnable = 0   ' use this control port to enable power up the GlobalModem
-
-Dim counter, i
-'**** Special defs for globalModem  ****
-Public c8                     'c8 input means user wants to send a message
-Public ts As Long
-Public SendReport As Long
-Public sendLoop As Long       'counter: Number of times the sendMsg  process failed to send data
-Public tries As Long         'number of times we've tried to deleiver the message
-Public reportBuilt As Boolean 'Flag indicating time to build a telemetry report
-'Public msgSent As Long   'flag: 1 means message has been delivered
-'Public rptAttempts As Long    ' Count number of reports attempetd
-'Public rptFailures as Long    ' Count  nuber of report failures
-Public dataDate As Long     ' the date in minutes of the year for the data
-Public values2send As Long  ' number of sensors to send to Global Modem
-Public TableData(TableWidth)
-Public values(valueArrayLen)  ' array of values to send.
-'Public commState As String * 20
-Public ScanState As String * 20
-Include "CPU:GlobalModemInclude.cr1"
-' end globalModem special defs
-
-
-
-
 StationName RioIcacos
 ' Original code for Goffs Falls written by Gopal Muluktula, May 2013
 ' September 3rd 2014 - Lisle Snyder added code to incorporate SUNA V2 1550 msec scan rate and enable cf card
@@ -134,6 +16,10 @@ StationName RioIcacos
 ' February 2021 - Kyle Zollo:
 ' 	-Incorporate lines for YSI EXO
 ' 	-Change ValueArrayLen (line 87) to 28: match new tablewidth
+' March 2021 - Kyle Zollo
+'   -Remove Gloabal Modem code
+'   -Remove Vaisala code 
+'   -Remove campbell pH code
 
 'SequentialMode 'Configures data logger to perform tasks sequentially
 'Program variables
@@ -150,10 +36,6 @@ Public rTime(9),FullTime 'declare as public and dimension rTime to 9
 Const NDays= 180 ' no of days of data stored in card.
 Const Ndata = NDays*(60/meas_freq)*24*suna_scans ' for long frames
 Const SData=((60/meas_freq)*24*NDays)*10' multiply the number by 10 .
-
-'Vaisala CO2 Sensor
-'Public SEVolt
-'Units SEVolt=mV
 
 'SUNA
 Public RawString As String *2000, NBytesReturned As String * 16
@@ -208,26 +90,19 @@ Public NO3Vals2(20), Abs254vals(20),Abs350vals(20),Brvals(20),Lvals(20)
 Public SumNO32,SumAbs254,SumAbs350,SumBr,SumL
 Public Nitrate_mgL,Nitrate_um,Absorbance_254,Absorbance_350,Bromide,LightAverage
 
-'Public pHCount
-'Public pH
 Public Cond,Ct,Temp2
 Public Turb
 Public TurbNTU
 Public fDOM
-'Dim RawString2 As String * 20, pHDigit(2)
 Dim Rs
 Public Gain
 
-'Units pHCount=pH
 Units Cond=mS/cm
 Units Ct=mS/cm
 Units Temp2=Deg C
 Units Turb=mV
 Units fDOM=mV
 
-' Aquatic CO2 variables 
-			Public AqCO2_mv(20), AqCO2_ppm(20), temp3, SUMCo2,AqCO2_ppm_avg  
-			Dim N, J
 
 '|||||||||||||||||PROGRAM CONSTANTS||||||||||||||||||||||||||||||||||||||||||||||||||
 
@@ -235,9 +110,6 @@ Const RavenPort = 7
 Public WiperFlagOn As Boolean
 Public ModemFlagOn As Boolean
 Public BattVolt ' measure the voltage being received
-
-'Const pHMult=0.01886792
-'Const pHOffs=-2.358491
 
 'Data Tables
 DataTable (SUNARaw,1,-1) '-1 for auto-allocate memory.
@@ -251,21 +123,17 @@ DataTable (WQual,1,-1)
   Minimum (1,batt_volt,FP2,0,False)
   Sample (1,Nitrate_um,IEEE4)
   Sample (1,Nitrate_mgL,IEEE4)
-  'Sample (1,SEVolt,FP2)
   Sample (1,Absorbance_254,IEEE4)
   Sample (1,Absorbance_350,IEEE4)
   Sample (1,Bromide,IEEE4)
   Sample (1,LightAverage,IEEE4)
   Sample(SDI12Vals,YSI(),IEEE4)
-  'Sample (1,pHCount,IEEE4)
-  'Sample (1,pH,IEEE4)
   Sample (1,Cond,FP2)
   Sample (1,Ct,FP2)
   Sample (1,Temp2,FP2)
   Sample (1,Turb,IEEE4)
   Sample (1,fDOM,IEEE4)
   Sample (1,Gain, IEEE4)
-  Sample (1,AqCO2_ppm_avg, IEEE4)
 EndTable
 
 DataTable (SUNAShortRaw,1,-1) '-1 for auto-allocate memory.
@@ -280,17 +148,6 @@ DataTable (SUNAShortRaw,1,-1) '-1 for auto-allocate memory.
   Sample (1,Bromide2,IEEE4)
   Sample (1,LightAverage2,IEEE4)
 EndTable
-
-' Aq CO2 tables
-			DataTable (AqCO2Full,1,-1)
-			CardOut (0,100000)
-			Sample(20,AqCO2_mv(),IEEE4)  
-			Sample(20,AqCO2_ppm(),IEEE4)  
-			EndTable 
-			DataTable (AqCO2Short,1,-1)
-			CardOut (0,10000)
-      		Sample(1,AqCO2_ppm_avg, IEEE4)
-			EndTable 
 
 
 '||||||||||||||||||||||||||||||||||| SUBROUTINES||||||||||||||||||||||||||||||||||||
@@ -335,82 +192,20 @@ Sub YSIMeasurements
 		
 			  NextScan
 		 EndSub
-		 
-		 ''''''''''''''''''''''''''''''
-Sub Aq_CO2Measurements
-			  ' read 20 measurements of CO2 
-          For J=1 To 20
-					VoltSe(AqCO2_mv(J), 1, mV2500, 3, False, 0, 250, 1, 0)
-
-					' calculate CO2 in ppm ' NOTE: use the appropriate regression parameters determined through Calibration!!
-					' convert the voltage from milli volts to Volts and then apply the regression equation for CO2 meter 03123BEB
-					 AqCO2_ppm(J) = (AqCO2_mv(J)/1000 - 1.035) / 0.00195
- 					Delay(0,100,mSec) 
-					Next J
-							
-					' perform a basic QA/QC to remove  outliers
-					 For J=1 To 20
-					   N=0
-					   SUMCo2=0
-					 temp3=AqCO2_ppm(J)
-					 ' The range of 100 to 2000 ppm is considered valid
-					 If ( temp3 <2000 AND temp3 > 100)
-					SUMCo2=SUMCo2+temp3
-					N=N+1
-					 EndIf 
-					Next J
-					' if for some reason there are no valid CO2 values
-					If ( N=0)
-           AqCO2_ppm_avg = NaN
-           Else
-             ' get average of the valid CO2 values
-           AqCO2_ppm_avg = SUMCo2/N 
-					EndIf
-					
-			   
-			EndSub 
 
 '||| |||||||||||||||||||||||||||||||PROGRAM||||||||||||||||||||||||||||||||||||
 BeginProg
   Scan (1,min,0,0)
-    ScanState = "Main"
-    'Trigger Global Modem report 2 minutes into reporting interval
-    If SendReport < 1 Then
-      If TimeIntoInterval(2,60,min) Then
-        SendReport = 1
-        reportBuilt = False
-      EndIf
-    EndIf
-    If TimeIntoInterval(12,24,Hr) Then
-      RavenPortOn = 1
-    EndIf
-    If TimeIntoInterval(14,24,Hr) Then
-      RavenPortOn = 0
-    EndIf
-    PortSet (RavenPort, RavenPortOn)  'When PortOn = 1, port will be set high
     If TimeIntoInterval (0,meas_freq,Min) Then ' to set the SUNA to start every 15 minutes, top and bottom of the hour
       RealTime( rTime )
       FullTime=Day_of_Year +(Hour/24)+(Minute/60)/60
 
       nitrateMeasurements   	' make nitrate measurement
       Battery(batt_volt)
-	  Aq_CO2Measurements
 
 'make YSI measurements
 SDI12Read = TRUE
 					YSIMeasurements
-
-      'Vaisala CO2 Sensor Generic Single-Ended Voltage measurements 'SEVolt' (wired to SE 1)
-      'VoltSe(SEVolt,1,mV5000,4,True,0,_60Hz,1,0)
-
-      'CS526 ISFET pH Probe measurement 'pH'
-      'SerialOpen(Com3,2400,16,0,41)
-      'SerialOut(Com3,"1M1!"&CHR(13),"",0,0)
-      'SerialIn(RawString2,Com3,50,0,20)
-      'Parse out 'pHAdd' and 'pHCount' from 'CS526String'
-      'SplitStr(pHDigit(),RawString2,"String",2,0)
-      'pHCount = pHDigit(2)
-      'pH=pHCount*pHMult+pHOffs
 
       'CS547A Conductivity and Temperature Probe measurements 'SpC', 'Ct', and 'Temp'
       'Make preliminary voltage measurement
@@ -533,53 +328,7 @@ SDI12Read = TRUE
       LightAverage = SumL/K
     EndIf
     CallTable (WQual)
-	CallTable AqCO2Full
-	CallTable AqCO2Short
   EndIf
-NextScan
-
-'*************************** Slow Scan for  Communications ****************************
-' This section allows the program to control the Global Modem data interface
-' SlowSequence allows us to do more lengthy processes at a lower priority than used for sensor sampling
-SlowSequence
-Scan(10,Sec,0,0)
-  '************* Assemble Data message for telemetry
-  ScanState = "SlowScan"
-'    If IfTime(1,60,Min) Then
-'      sendReport = 1
-'    EndIf
-  If SendReport > 0 Then
-    'Only build the report once
-    If NOT reportBuilt  Then
-      'Get the data report from thetable
-      GetRecord(TableData,Wqual,1)
-      dataDate = INT(Wqual.Timestamp(2,1))/60
-      If dataDate < 0 Then
-        dataDate = INT(Public.TimeStamp(2,1))/60
-      EndIf
-      values2send = tablewidth
-      For i = 1 To values2send
-        Values(i) = TableData(i)
-      Next
-      sendLoop = 0
-      tries = 0
-      reportBuilt = True
-      rptAttempts += 1
-      commState = "Msg Init"
-    EndIf'reportBuilt
-    'Send values2send values via globaModem.
-    sendvalues(dataDate, values2send)
-    If(msgSent >= 1) Then
-      sendReport = 0
-    Else
-      sendloop = sendloop +1
-      If sendloop > 9 Then
-        sendReport = 0
-        commState = "Msg Failed"
-        rptFailures += 1
-      EndIf
-    EndIf '(reportBuilt)
-  EndIf  '(sendReport)
 NextScan
 
 EndProg
