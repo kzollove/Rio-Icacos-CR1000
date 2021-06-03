@@ -20,6 +20,8 @@ StationName RioIcacos
 '   -Remove Gloabal Modem code
 '   -Remove Vaisala code 
 '   -Remove campbell pH code
+' June 2021 - Kyle Zollo
+'   -Add code for cell modem
 
 'SequentialMode 'Configures data logger to perform tasks sequentially
 'Program variables
@@ -196,6 +198,12 @@ Sub YSIMeasurements
 '||| |||||||||||||||||||||||||||||||PROGRAM||||||||||||||||||||||||||||||||||||
 BeginProg
   Scan (1,min,0,0)
+  
+  If TimeIntoInterval(12,24,Hr) Then RavenPortOn = 1    
+  If TimeIntoInterval(14,24,Hr) Then RavenPortOn = 0  		
+	PortSet (RavenPort, RavenPortOn)  'When PortOn = 1, port will be set high
+  
+  
     If TimeIntoInterval (0,meas_freq,Min) Then ' to set the SUNA to start every 15 minutes, top and bottom of the hour
       RealTime( rTime )
       FullTime=Day_of_Year +(Hour/24)+(Minute/60)/60
