@@ -1,0 +1,336 @@
+StationName RioIcacos
+' Original code for Goffs Falls written by Gopal Muluktula, May 2013
+' September 3rd 2014 - Lisle Snyder added code to incorporate SUNA V2 1550 msec scan rate and enable cf card
+' Cell modem to turn at 12.00 and off at 14.00
+' Added code to read time variables at the start of each measurement.
+' August 2015 - Gopal M. made improvements to how the SUNA V2 is read (with SUNAShortRaw file).
+' May 31 2016 - Lisle Snyder merged code provided by Eric Moore to switch YSI EXO2 with Eureka, and add Vaisala to SE1 for Rio Icacos PR site
+' April 14 2017 - Eric Moore merged this code to accomodate wired sensor set up: Conductivity, pH, CO2, Turbidity, and fDOM
+' March 2018 - Lisle Snyder added lines to include an Aquatic CO2 meter with analog output, Removed Eureka code lines to save space
+' April 16 2018 - Carla L�pez Lloreda fixed mistake between Ct and Cond (were switched around)
+' December 2019 - Kyle Zollo:
+'   -commented out pH sensor lines
+'   -Removed pH and SEVolt from table
+'		-fixed mistake variable used in Ct calculation
+'   -renamed as v5
+' February 2021 - Kyle Zollo:
+' 	-Incorporate lines for YSI EXO
+' 	-Change ValueArrayLen (line 87) to 28: match new tablewidth
+' March 2021 - Kyle Zollo
+'   -Remove Gloabal Modem code
+'   -Remove Vaisala code 
+'   -Remove campbell pH code
+
+'SequentialMode 'Configures data logger to perform tasks sequentially
+'Program variables
+'Variable list
+'Diagnostic
+
+Public PTemp, batt_volt, ComStatus As Boolean,RavenPortOn' measurement variables
+Const meas_freq = 15 ' minutes, measurement frequency
+Const suna_scans=22 '  number of scans at meas_freq
+Const buf_scan=(suna_scans-5) ' buffer scans
+Const suna_delay = 35 ' seconds
+Const MinBatteryVoltage = 11.2 ' battery voltage at which to stop the SUNA
+Public rTime(9),FullTime 'declare as public and dimension rTime to 9
+Const NDays= 180 ' no of days of data stored in card.
+Const Ndata = NDays*(60/meas_freq)*24*suna_scans ' for long frames
+Const SData=((60/meas_freq)*24*NDays)*10' multiply the number by 10 .
+
+'SUNA
+Public RawString As String *2000, NBytesReturned As String * 16
+'Declare Other Variables
+Public SUNA_parse(10)
+'Assign aliases to the public array
+Alias SUNA_parse(2)=DayofYear2
+Alias SUNA_parse(3)=TimeofDayUTC2
+Alias SUNA_parse(4)=Nitrate_um2
+Alias SUNA_parse(5)=Nitrate_mgL2
+Alias SUNA_parse(6)=Absorbance_2542
+Alias SUNA_parse(7)=Absorbance_3502
+Alias SUNA_parse(8)=Bromide2
+Alias SUNA_parse(9)=LightAverage2
+Alias SUNA_parse(10)=DarkAverage2
+
+' YSI EXO
+	Const SDI12Vals = 13 'max number SDI12 values to be returned
+    Const SDI12Freq = 17 'minutes
+    Public SDI12Read As Boolean
+    Dim LCount
+		Public YSI(SDI12Vals) 'array to hold SDI12 values returned
+		' time variable
+		Dim e
+               
+       Alias YSI(1)=CablePwrV
+       Alias YSI(2)=TempC 
+       Alias YSI(3)=Conductivity 
+       Alias YSI(4)=SpConductivity
+	   Alias YSI(5)=pH
+	   Alias YSI(6)=pH_mv
+       Alias YSI(7)=DepthMeter 
+       Alias YSI(8)=ODOPerCent 
+       Alias YSI(9)=ODOMGL 
+       Alias YSI(10)=TurbidityFNU
+       Alias YSI(11)=TurbidityNTU 
+       Alias YSI(12)=FDOMRFU
+       Alias YSI(13)=FDOMQSU 
+
+Alias rTime(1) = Year          'assign the alias Year to rTime(1)
+Alias rTime(2) = Month         'assign the alias Month to rTime(2)
+Alias rTime(3) = DOM           'assign the alias Day to rTime(3)
+Alias rTime(4) = Hour          'assign the alias Hour to rTime(4)
+Alias rTime(5) = Minute        'assign the alias Minute to rTime(5)
+Alias rTime(6) = Second        'assign the alias Second to rTime(6)
+Alias rTime(9) = Day_of_Year   'assign the alias Day_of_Year to rTime(9)
+
+' New Variables to read the SUNA V2 correctly
+Public  NO3Vals(20), AvgNO3, M, K, L, SUMNO3, temp
+Alias K = ValidMeas
+Public NO3Vals2(20), Abs254vals(20),Abs350vals(20),Brvals(20),Lvals(20)
+Public SumNO32,SumAbs254,SumAbs350,SumBr,SumL
+Public Nitrate_mgL,Nitrate_um,Absorbance_254,Absorbance_350,Bromide,LightAverage
+
+Public Cond,Ct,Temp2
+Public Turb
+Public TurbNTU
+Public fDOM
+Dim Rs
+Public Gain
+
+Units Cond=mS/cm
+Units Ct=mS/cm
+Units Temp2=Deg C
+Units Turb=mV
+Units fDOM=mV
+
+
+'|||||||||||||||||PROGRAM CONSTANTS||||||||||||||||||||||||||||||||||||||||||||||||||
+
+Const RavenPort = 7
+Public WiperFlagOn As Boolean
+Public ModemFlagOn As Boolean
+Public BattVolt ' measure the voltage being received
+
+'Data Tables
+DataTable (SUNARaw,1,-1) '-1 for auto-allocate memory.
+  CardOut (1,Ndata)'
+  Sample (1,RawString(),String)
+EndTable
+
+DataTable (WQual,1,-1)
+  CardOut (0,SData)' enough for 180 days of data.
+  Sample (1,PTemp,FP2)
+  Minimum (1,batt_volt,FP2,0,False)
+  Sample (1,Nitrate_um,IEEE4)
+  Sample (1,Nitrate_mgL,IEEE4)
+  Sample (1,Absorbance_254,IEEE4)
+  Sample (1,Absorbance_350,IEEE4)
+  Sample (1,Bromide,IEEE4)
+  Sample (1,LightAverage,IEEE4)
+  Sample(SDI12Vals,YSI(),IEEE4)
+  Sample (1,Cond,FP2)
+  Sample (1,Ct,FP2)
+  Sample (1,Temp2,FP2)
+  Sample (1,Turb,IEEE4)
+  Sample (1,fDOM,IEEE4)
+  Sample (1,Gain, IEEE4)
+EndTable
+
+DataTable (SUNAShortRaw,1,-1) '-1 for auto-allocate memory.
+  ' This table stores only the parsed strings of data. A short table, not for use beyond the code.
+  ' entries stored in ring mode
+  CardOut (0,2000)'
+  Sample (1, FullTime, IEEE4 )
+  Sample (1,Nitrate_um2,IEEE4)
+  Sample (1,Nitrate_mgL2,IEEE4)
+  Sample (1,Absorbance_2542,IEEE4)
+  Sample (1,Absorbance_3502,IEEE4)
+  Sample (1,Bromide2,IEEE4)
+  Sample (1,LightAverage2,IEEE4)
+EndTable
+
+
+'||||||||||||||||||||||||||||||||||| SUBROUTINES||||||||||||||||||||||||||||||||||||
+Sub nitrateMeasurements
+  ' SUNa is Full ASCII mode,
+  ' create an active com2 port.
+  ' VERY IMPORTANT: SUNA likes it when the port is active and then the power is switched on. so create active com  port first, and then turn the power on .
+  'SUNA may not talk to the data logger if the steps are reversed.
+  SerialOpen (Com2,38400,0,0,25000)'open com port w/ correct port settings AND enough Data
+  ' get panel temp. and battery voltage for transmitting with data record.
+  PanelTemp (PTemp,250)
+  Battery (batt_volt)
+  SW12(1) ' switch on power to SUNA
+  Delay(0,suna_delay,Sec) '
+  Scan(1550, mSec, 2,suna_scans )
+    SerialInRecord (Com2,RawString,83,0,&H0D0A,NBytesReturned,00) ' read each scan with a start of text character
+    SplitStr (SUNA_parse(),RawString,0,10,0)
+    '			AvgRun (SUNA(),10,SUNA_parse(),suna_scans-1)
+    '     	            &H53&H41 "SA in SAT.... instrument code."
+    CallTable SUNARaw '
+    CallTable SUNAShortRaw
+  NextScan
+  SW12(0)'shut down SUNA
+  SerialClose (Com2) '
+EndSub
+
+''''''''''''''''''''''''''
+Sub YSIMeasurements
+			 Scan( 65, Sec, 1,1 )   ' scan for roughly 1 minute to allow the ysi to send the data.
+				  Move (YSI(),SDI12Vals,NAN,1)
+				 '    SW12(1) ' switch on power to YSI 
+               	   	Delay(0,5,Sec) 
+        	 LCount=1      	   	
+			For e = 1 To SDI12Vals 'Try up to 14 times for valid readings
+						SDI12Recorder (YSI(LCount),7,0,"C!",1.0,0)	' EXO2 connected to CR1000 port C7 (arg2)
+																	' and SDI12 address 0 (arg3)
+			If YSI(LCount)<>NAN Then ExitFor
+			Next e
+			LCount=LCount+1
+			
+
+		
+			  NextScan
+		 EndSub
+
+'||| |||||||||||||||||||||||||||||||PROGRAM||||||||||||||||||||||||||||||||||||
+BeginProg
+  Scan (1,min,0,0)
+    If TimeIntoInterval (0,meas_freq,Min) Then ' to set the SUNA to start every 15 minutes, top and bottom of the hour
+      RealTime( rTime )
+      FullTime=Day_of_Year +(Hour/24)+(Minute/60)/60
+
+      nitrateMeasurements   	' make nitrate measurement
+      Battery(batt_volt)
+
+'make YSI measurements
+SDI12Read = TRUE
+					YSIMeasurements
+
+      'CS547A Conductivity and Temperature Probe measurements 'SpC', 'Ct', and 'Temp'
+      'Make preliminary voltage measurement
+      BrFull(Rs,1,mV2500,4,1,1,2500,True,True,0,_60Hz,-0.001,1)
+      'Convert voltage measurement to resistance
+      Rs=Rs/(1-Rs)
+      'Make refined voltage measurement based on preliminary measurement
+      Select Case Rs
+      Case Is <1.8
+        BrHalf(Rs,1,mV2500,8,1,1,2500,True,0,_60Hz,1,0)
+      Case Is <9.25
+        BrFull(Rs,1,mV2500,4,1,1,2500,True,True,0,_60Hz,-0.001,1)
+      Case Is <280
+        BrFull(Rs,1,mV250,4,1,1,2500,True,True,0,_60Hz,-0.001,1)
+      EndSelect
+      'Convert voltage measurement to resistance
+      Rs=Rs/(1-Rs)
+      'Subtract resistance errors
+      Rs=Rs-(75*0.000032+0.005)
+      'Calculate EC
+      Cond=(1/Rs)*1.452
+      'Correct EC for ionization errors
+      If Cond<0.474 Then
+        Cond=Cond*0.95031-0.00378
+      Else
+        Cond=-0.02889+(0.98614*Cond)+(0.02846*Cond^2)
+      EndIf
+      'Make temperature measurement (Deg C)
+      Therm107(Temp2,1,5,2,0,250,1,0)
+      'Correct EC for temperature errors
+      Ct=(Cond*100)/((Temp2-25)*2+100)
+      'Trap measurements below 0.005 mS/cm threshold
+      If Ct<0.005 Then
+        Ct=0.005
+      EndIf
+
+
+      PortSet(1,1)
+      Gain = 1
+      'Measure cdom with Cyclops-7
+      Delay(1,1,sec)
+      VoltDiff(fDOM,1,AutoRange,7,False,0,_60Hz,1,0)
+      If fDOM>4600 Then
+        WriteIO (&B10,&B10)
+        Gain = 1
+      ElseIf fDOM<=440
+        WriteIO (&B10,&B00)
+        Gain = 10
+      EndIf
+
+      'Measure Turbidity with Cyclops-7
+      PortSet(2,1)
+
+      Delay(1,1,sec)
+      ' VoltSe(cDOM,1,AutoRange,14,False,0,_60Hz,1,0)
+      VoltDiff(Turb,1,AutoRange,8,False,0,_60Hz,1,0)
+      If Turb>4600 Then
+        WriteIO (&B10,&B10)
+        Gain = 1
+      ElseIf Turb<=440
+        WriteIO (&B10,&B00)
+        Gain = 10
+      EndIf
+      ' TurbNTU =((Turb/Gain)*600)
+      'Turb = ((.8225*Turb)+30.82)
+
+      'Hold on to the data
+
+      ' Go back to the SUNA Data stored in the shorter Raw table
+      ' accessthe data table and get the previous 20 values
+      ' read all the SUNA NO3 values to a temporary variable.
+      For L=1 To 20
+        NO3Vals(L)=SUNAShortRaw.Nitrate_mgL2(1,L)
+        NO3Vals2(L)=SUNAShortRaw.Nitrate_um2(1,L)
+        Abs254vals(L)=SUNAShortRaw.Absorbance_2542(1,L)
+        Brvals(L)=SUNAShortRaw.Bromide2(1,L)
+        Lvals(L)=SUNAShortRaw.LightAverage2(1,L)
+      Next L
+      ' perform some QA/QC on them
+      ' perform a basic QA/QC to remove any outliers
+      ' assuming that a valid NO3 value is accompanied by good values of other parameters
+      K=0
+      SUMNO3=0
+      SumNO32=0
+      SumAbs254=0
+      SumAbs350=0
+      SumBr=0
+      SumL=0
+      For M=1 To 20
+        temp=NO3Vals(M)
+        ' The range of 0 to 10 mgL is considered valid
+        If ( temp < 10) Then'?????????????????
+          If(temp > 0) Then
+            SUMNO3=SUMNO3+temp
+
+            ' this is a zone for valid numbers only , so pick them up
+            SumNO32=SumNO32+NO3Vals2(M)
+            SumAbs254=SumAbs254+Abs254vals(M)
+            SumAbs350=SumAbs350+Abs350vals(M)
+            SumBr=SumBr+Brvals(M)
+            SumL=SumL+Lvals(M)
+            K=K+1
+          EndIf
+        EndIf
+      Next M
+      ' if for some reason there are no valid CO2 values
+      If ( K=0 )
+      Nitrate_mgL = NaN
+      Nitrate_um = NaN
+      Absorbance_254 = NaN
+      Absorbance_350 = NaN
+      Bromide =NaN
+      LightAverage = NaN
+    Else
+      Nitrate_mgL = SUMNO3/K
+      Nitrate_um = SumNO32/K
+      Absorbance_254 = SumAbs254/K
+      Absorbance_350 = SumAbs350/K
+      Bromide =SumBr/K
+      LightAverage = SumL/K
+    EndIf
+    CallTable (WQual)
+  EndIf
+NextScan
+
+EndProg
+
+
